@@ -90,6 +90,14 @@ export default function TeamPanel({ currentUser, triggerNewUser }) {
         </span>
       );
     }
+    if (role === 'manager') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs">
+          <span>👔</span>
+          <span>{lang === 'kh' ? 'អ្នកគ្រប់គ្រងទូទៅ' : 'Manager'}</span>
+        </span>
+      );
+    }
     if (role === 'accountant') {
       return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 shadow-2xs">
@@ -417,9 +425,10 @@ export default function TeamPanel({ currentUser, triggerNewUser }) {
                     defaultValue={modal.user?.role || 'staff'}
                     className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-blue-500 transition-all"
                   >
-                    <option value="staff">{lang === 'kh' ? 'បុគ្គលិកផ្នែកលក់' : 'Sales staff'}</option>
-                    <option value="accountant">{lang === 'kh' ? 'បុគ្គលិកគណនេយ្យ' : 'Finance / Accountant'}</option>
-                    <option value="admin">{lang === 'kh' ? 'អ្នកគ្រប់គ្រង' : 'Administrator'}</option>
+                    <option value="staff">{lang === 'kh' ? 'បុគ្គលិកផ្នែកលក់ (Sales Staff)' : 'Sales staff'}</option>
+                    <option value="manager">{lang === 'kh' ? 'អ្នកគ្រប់គ្រងទូទៅ (Manager)' : 'Manager'}</option>
+                    <option value="accountant">{lang === 'kh' ? 'បុគ្គលិកគណនេយ្យ (Finance)' : 'Finance / Accountant'}</option>
+                    <option value="admin">{lang === 'kh' ? 'អ្នកគ្រប់គ្រងប្រព័ន្ធ (Admin)' : 'Administrator'}</option>
                   </select>
                 </label>
               </>
@@ -452,8 +461,8 @@ export default function TeamPanel({ currentUser, triggerNewUser }) {
                 </label>
                 <small className="text-slate-400 text-[11px] block">
                   {lang === 'kh' 
-                    ? 'អ្នកប្រើប្រាស់អាចផ្លាស់ប្តូរពាក្យសម្ងាត់ផ្ទាល់ខ្លួននៅពេលចូលប្រើប្រាស់លើកដំបូង។' 
-                    : t('tempPasswordHelper', 'The user must choose their own password on first sign-in.')}
+                    ? 'លេខសម្ងាត់នេះត្រូវបានកំណត់ដោយផ្ទាល់ពី Admin។ បុគ្គលិក និង Manager មិនមានសិទ្ធិកែប្រែពាក្យសម្ងាត់ដោយខ្លួនឯងឡើយ។' 
+                    : 'This password is set directly by the administrator. Staff and Managers cannot change their passwords.'}
                 </small>
               </>
             )}

@@ -41,13 +41,16 @@ def current_user(request: Request, db: Session = Depends(get_db)):
     user = db.get(models.User, session.user_id)
     if not user or not user.is_active or not user.password_hash:
         raise HTTPException(401, 'This account is disabled')
-    if user.must_change_password and request.url.path not in ('/api/auth/me','/api/auth/password','/api/auth/logout'):
-        raise HTTPException(403, 'Change your temporary password before continuing')
     return user
 
 def require_admin(user=Depends(current_user)):
     if user.role != 'admin':
         raise HTTPException(403, 'Administrator access required')
+    return user
+
+def require_manager_or_admin(user=Depends(current_user)):
+    if user.role not in ('admin', 'manager'):
+        raise HTTPException(403, 'Manager or Administrator access required')
     return user
 
 def require_finance_or_admin(user=Depends(current_user)):
@@ -59,8 +62,8 @@ def audit(db, user, action, target):
     db.add(models.AuditLog(user_id=user.id if user else None, action=action, target=str(target)))
 
 def own_booking(user, booking):
-    if user.role not in ('admin', 'accountant') and booking.staff_id != user.id:
-        raise HTTPException(403, 'Only the seller or an administrator can change this booking')
+    if user.role not in ('admin', 'manager', 'accountant') and booking.staff_id != user.id:
+        raise HTTPException(403, 'Only the seller, a manager, or an administrator can change this booking')
 
 class Credentials(BaseModel):
     email: str = Field(min_length=3, max_length=254)
@@ -70,7 +73,7 @@ class AccountCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     email: str = Field(min_length=3, max_length=254)
     password: str = Field(min_length=1, max_length=128)
-    role: Literal['admin', 'staff', 'accountant'] = 'staff'
+    role: Literal['admin', 'manager', 'staff', 'accountant'] = 'staff'
     phone: str | None = None
     @field_validator('name','email')
     @classmethod
@@ -86,7 +89,7 @@ class AccountCreate(BaseModel):
 
 class AccountUpdate(BaseModel):
     name: str = Field(min_length=1,max_length=100)
-    role: Literal['admin', 'staff', 'accountant']
+    role: Literal['admin', 'manager', 'staff', 'accountant']
     is_active: bool
 
 class PasswordChange(BaseModel):
@@ -181,6 +184,8 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
 
 @router.post('/auth/password')
 def change_password(data: PasswordChange, response: Response, user=Depends(current_user), db: Session = Depends(get_db)):
+    if user.role != 'admin':
+        raise HTTPException(403, 'Only company administrators can change passwords. Staff and manager passwords are administered by the company owner.')
     if not verify_password(data.current_password,user.password_hash): raise HTTPException(400,'Current password is incorrect')
     user.password_hash=hash_password(data.new_password); user.must_change_password=False
     db.query(models.AuthSession).filter_by(user_id=user.id).delete()
@@ -194,7 +199,7 @@ def users(user=Depends(require_admin), db: Session = Depends(get_db)):
 @router.post('/users',status_code=201)
 def create_user(data: AccountCreate, user=Depends(require_admin), db: Session = Depends(get_db)):
     if db.query(models.User).filter(func.lower(models.User.email) == data.email).first(): raise HTTPException(409,'Email already exists')
-    new=models.User(name=data.name,email=data.email,phone=data.phone,role=data.role,password_hash=hash_password(data.password),is_active=True,must_change_password=True)
+    new=models.User(name=data.name,email=data.email,phone=data.phone,role=data.role,password_hash=hash_password(data.password),is_active=True,must_change_password=False)
     db.add(new); db.flush(); audit(db,user,'user.created',new.id); db.commit()
     return user_view(new)
 
@@ -214,9 +219,9 @@ def reset_password(user_id:int,data:PasswordReset,user=Depends(require_admin),db
     target=db.get(models.User,user_id)
     if not target: raise HTTPException(404,'User not found')
     if target.id == user.id: raise HTTPException(400,'Use Change password for your own account')
-    target.password_hash=hash_password(data.password); target.must_change_password=True
+    target.password_hash=hash_password(data.password); target.must_change_password=False
     db.query(models.AuthSession).filter_by(user_id=target.id).delete()
-    audit(db,user,'user.password_reset',target.id); db.commit(); return {'message':'Temporary password set'}
+    audit(db,user,'user.password_reset',target.id); db.commit(); return {'message':'Password set successfully'}
 
 @router.get('/audit')
 def audit_history(user=Depends(require_admin),db:Session=Depends(get_db)):

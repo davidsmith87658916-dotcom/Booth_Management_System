@@ -5,7 +5,7 @@ from datetime import datetime
 class UserBase(BaseModel):
     name: str
     email: str
-    role: Literal["admin", "staff", "accountant"] = "staff"
+    role: Literal["admin", "manager", "staff", "accountant"] = "staff"
     phone: Optional[str] = None
 
 class UserOut(UserBase):

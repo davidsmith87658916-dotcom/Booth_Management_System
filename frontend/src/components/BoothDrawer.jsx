@@ -46,7 +46,7 @@ export default function BoothDrawer({
   if (!booth) return null;
 
   const booking = booth.active_booking;
-  const canEdit = user?.role === 'admin' || !booking || booking.staff_id === user?.id;
+  const canEdit = user?.role === 'admin' || user?.role === 'manager' || !booking || booking.staff_id === user?.id;
   const isHold = booth.status === 'hold';
   const isSold = booth.status === 'sold';
   const isAvailable = booth.status === 'available';

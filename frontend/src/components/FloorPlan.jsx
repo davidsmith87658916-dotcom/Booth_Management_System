@@ -50,6 +50,12 @@ export default function FloorPlan({
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    if (user?.role !== 'admin' && isEditMode) {
+      setIsEditMode(false);
+    }
+  }, [user?.role, isEditMode]);
+
   // Count expired holds
   const expiredHoldCount = useMemo(() => {
     return booths.filter(b => {
@@ -521,16 +527,18 @@ export default function FloorPlan({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setCreating(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-all border border-white/20 cursor-pointer"
-          >
-            <Plus size={15} />
-            <span>{lang === 'kh' ? 'បង្កើតស្តង់ថ្មី' : '+ Add Booth'}</span>
-          </button>
-        </div>
+        {user?.role === 'admin' && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCreating(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-all border border-white/20 cursor-pointer"
+            >
+              <Plus size={15} />
+              <span>{lang === 'kh' ? 'បង្កើតស្តង់ថ្មី' : '+ Add Booth'}</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 2. Stats Section - 4 Quick Stats Cards (matching ICT Lab) */}
@@ -789,8 +797,8 @@ export default function FloorPlan({
                   </button>
                 )}
 
-                {/* Clear Expired Holds (Admin only) */}
-                {expiredHoldCount > 0 && user?.role === 'admin' && onClearExpiredHolds && (
+                {/* Clear Expired Holds (Admin or Manager) */}
+                {expiredHoldCount > 0 && (user?.role === 'admin' || user?.role === 'manager') && onClearExpiredHolds && (
                   <button
                     type="button"
                     onClick={onClearExpiredHolds}
@@ -1209,7 +1217,7 @@ export default function FloorPlan({
       )}
 
       {/* Modal for adding new booth */}
-      {creating && (
+      {creating && user?.role === 'admin' && (
         <ModalFrame label={t('createBoothModalTitle', 'Add New Booth')} onClose={() => setCreating(false)}>
           <form
             className="panel form-stack account-form"

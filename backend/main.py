@@ -7,7 +7,7 @@ import os
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
-from auth import current_user, require_admin, own_booking, audit, require_finance_or_admin
+from auth import current_user, require_admin, own_booking, audit, require_finance_or_admin, require_manager_or_admin
 from auth import router as auth_router
 from layout import router as layout_router
 from migrations import migrate
@@ -624,7 +624,7 @@ def reject_payment_note(note_id: int, db: Session = Depends(get_db), user=Depend
     return {"message": "Payment marked as rejected", "note_id": note_id}
 
 @app.post("/api/events/{event_id}/release-expired-holds")
-def release_expired_holds(event_id: int, db: Session = Depends(get_db), user=Depends(require_admin)):
+def release_expired_holds(event_id: int, db: Session = Depends(get_db), user=Depends(require_manager_or_admin)):
     now_str = utc_now().strftime("%Y-%m-%d %H:%M:%S")
     expired_bookings = db.query(models.Booking).join(
         models.Booth, models.Booking.booth_id == models.Booth.id

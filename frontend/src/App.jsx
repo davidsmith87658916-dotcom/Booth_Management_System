@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { api, write } from './api';
-import AuthScreen,{PasswordScreen} from './components/AuthScreen';
+import AuthScreen from './components/AuthScreen';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import FloorPlan from './components/FloorPlan';
@@ -59,9 +59,8 @@ export default function App(){
 
  if(!ready)return <div className="auth-page">{t('loadingWorkspace')}</div>;
  if(error)return <div className="auth-page"><section className="auth-card"><h2>{t('cannotConnect')}</h2><p role="alert">{error}</p><button className="primary-action" onClick={initialize}>{t('tryAgain')}</button></section></div>;
- if(!user)return <AuthScreen setup={setup} onSignedIn={u=>{setSetup(false);setUser(u);}}/>;
- if(user.must_change_password)return <PasswordScreen required onDone={setUser} onLogout={logout}/>;
- return <Workspace key={user.id} user={user} onUserChanged={setUser} onLogout={logout}/>;
+  if(!user)return <AuthScreen setup={setup} onSignedIn={u=>{setSetup(false);setUser(u);}}/>;
+  return <Workspace key={user.id} user={user} onUserChanged={setUser} onLogout={logout}/>;
 }
 function Workspace({user,onUserChanged,onLogout}){
  const { lang, toggleLang, t } = useLanguage();

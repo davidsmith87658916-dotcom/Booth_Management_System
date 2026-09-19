@@ -69,7 +69,7 @@ export default function Sidebar({ activeTab, setActiveTab, currentEvent, user, o
           <span className="avatar">{user.name.slice(0, 2).toUpperCase()}</span>
           <div className="min-w-0">
             <strong className="truncate block leading-normal">{user.name}</strong>
-            <small className="leading-normal">{admin ? t('administrator') : user.role === 'accountant' ? t('accountant') : t('salesStaff')}</small>
+            <small className="leading-normal">{admin ? t('administrator') : user.role === 'manager' ? t('role_manager') : user.role === 'accountant' ? t('accountant') : t('salesStaff')}</small>
           </div>
         </div>
       </div>

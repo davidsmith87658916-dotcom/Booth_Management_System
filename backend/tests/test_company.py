@@ -14,10 +14,14 @@ class CompanyWorkflowTests(unittest.TestCase):
     setUp=base.WorkflowTests.setUp
     book=base.WorkflowTests.book
 
-    def staff_client(self,email='staff@test.local'):
+    def staff_client(self,email='staff@test.local',role='staff'):
         with SessionLocal() as db:
-            if not db.query(models.User).filter_by(email=email).first():
-                db.add(models.User(name=email.split('@')[0],email=email,role='staff',password_hash=base.TEST_HASH,is_active=True));db.commit()
+            user = db.query(models.User).filter_by(email=email).first()
+            if not user:
+                db.add(models.User(name=email.split('@')[0],email=email,role=role,password_hash=base.TEST_HASH,is_active=True));db.commit()
+            elif user.role != role:
+                user.role = role
+                db.commit()
         c=TestClient(app,client=('127.0.0.1',51000),headers={'X-Requested-With':'ExpoHub'})
         self.assertEqual(c.post('/api/auth/login',json={'email':email,'password':base.TEST_PASSWORD}).status_code,200)
         return c
@@ -48,11 +52,13 @@ class CompanyWorkflowTests(unittest.TestCase):
         self.assertEqual(result.status_code,201,result.text)
         self.assertNotIn('password_hash',result.json())
         staff=self.staff_client('employee@test.local')
-        self.assertEqual(staff.get('/api/events').status_code,403)
-        self.assertTrue(staff.get('/api/auth/me').json()['must_change_password'])
-        self.assertEqual(staff.post('/api/auth/password',json={'current_password':'wrong','new_password':'New-Temporary-Test-2026'}).status_code,400)
-        self.assertEqual(staff.post('/api/auth/password',json={'current_password':base.TEST_PASSWORD,'new_password':'New-Temporary-Test-2026'}).status_code,200)
+        # Staff is not blocked by password change and can immediately access events
         self.assertEqual(staff.get('/api/events').status_code,200)
+        self.assertFalse(staff.get('/api/auth/me').json()['must_change_password'])
+        # Staff is forbidden from changing passwords
+        self.assertEqual(staff.post('/api/auth/password',json={'current_password':base.TEST_PASSWORD,'new_password':'New-Temporary-Test-2026'}).status_code,403)
+        # Administrator can change their own password
+        self.assertEqual(self.client.post('/api/auth/password',json={'current_password':base.TEST_PASSWORD,'new_password':'Admin-New-Pass-2026'}).status_code,200)
         cookie=staff.cookies.get('expohub_session');self.assertTrue(cookie)
         self.assertEqual(staff.post('/api/auth/logout').status_code,200)
         self.assertEqual(staff.get('/api/auth/me').status_code,401)
@@ -224,9 +230,8 @@ class CompanyWorkflowTests(unittest.TestCase):
         # 3. Staff cannot verify payment (403)
         self.assertEqual(staff.post(f'/api/payment-notes/{note_id}/verify').status_code, 403)
         
-        # 4. Accountant logs in, changes temporary password and verifies payment
-        acc_client = self.staff_client('finance@test.local')
-        acc_client.post('/api/auth/password', json={'current_password': base.TEST_PASSWORD, 'new_password': 'Permanent-Finance-Pass-123'})
+        # 4. Accountant logs in and verifies payment
+        acc_client = self.staff_client('finance@test.local', role='accountant')
         verify_res = acc_client.post(f'/api/payment-notes/{note_id}/verify')
         self.assertEqual(verify_res.status_code, 200)
         
@@ -241,5 +246,55 @@ class CompanyWorkflowTests(unittest.TestCase):
         pub_res = anon.get(f'/api/public/events/{self.event}/floorplan')
         self.assertEqual(pub_res.status_code, 200)
         self.assertEqual(len(pub_res.json()['booths']), 1)
+
+    def test_manager_permissions_and_boundaries(self):
+        # 1. Admin creates Manager
+        res = self.client.post('/api/users', json={'name':'Manager John','email':'manager@test.local','password':base.TEST_PASSWORD,'role':'manager'})
+        self.assertEqual(res.status_code, 201)
+        
+        manager = self.staff_client('manager@test.local', role='manager')
+        
+        # 2. Manager CANNOT access admin endpoints (users, audit, event deletion, booth creation, password change)
+        for method,path,payload in [
+            ('get','/api/users',None),
+            ('get','/api/audit',None),
+            ('post','/api/users',{'name':'Sub','email':'sub@test.local','password':base.TEST_PASSWORD,'role':'staff'}),
+            ('post','/api/events',{'name':'Event2','venue':'V','start_date':'2026-01-01','end_date':'2026-01-02'}),
+            ('delete',f'/api/events/{self.event}',None),
+            ('post','/api/booths',{'event_id':self.event,'booth_code':'M-01'}),
+            ('delete',f'/api/booths/{self.booth}',None),
+            ('post','/api/auth/password',{'current_password':base.TEST_PASSWORD,'new_password':'Manager-Pass'}),
+        ]:
+            result = getattr(manager, method)(path, **({'json': payload} if payload else {}))
+            self.assertEqual(result.status_code, 403, (method, path, result.text))
+        
+        # 3. Manager CANNOT verify or reject payment notes (strictly finance/admin)
+        note_res = self.client.post(f'/api/bookings/{self.book().json()["booking_id"]}/payment-note', json={'paid_amount':10})
+        booth_data = self.client.get(f'/api/events/{self.event}/booths').json()[0]
+        note_id = booth_data['active_booking']['payment_notes'][0]['id']
+        self.assertEqual(manager.post(f'/api/payment-notes/{note_id}/verify').status_code, 403)
+        self.assertEqual(manager.post(f'/api/payment-notes/{note_id}/reject').status_code, 403)
+
+        # 4. Manager CAN access analytics
+        self.assertEqual(manager.get(f'/api/analytics/{self.event}').status_code, 200)
+        
+        # 5. Manager CAN manage/override staff booking (extend hold, confirm sale)
+        create_res = self.client.post('/api/booths', json={'event_id':self.event, 'booth_code':'M-99', 'price':100})
+        booth2 = create_res.json()['booth_id']
+        staff = self.staff_client('seller@test.local', role='staff')
+        bk_res = staff.post(f'/api/booths/{booth2}/book', json={
+            'booth_id': booth2,
+            'event_id': self.event,
+            'exhibitor_name': 'Staff Client Corp',
+            'contact_person': 'Staff',
+            'phone': '012345678',
+            'booking_status': 'hold',
+            'total_agreed_price': 100
+        }).json()
+        booking2 = bk_res['booking_id']
+        
+        # Manager extends hold and confirms sale on staff's booking
+        self.assertEqual(manager.post(f'/api/bookings/{booking2}/extend-hold', json={'hours': 48}).status_code, 200)
+        self.assertEqual(manager.post(f'/api/bookings/{booking2}/confirm').status_code, 200)
 
 if __name__=='__main__':unittest.main()

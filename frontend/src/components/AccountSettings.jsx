@@ -150,7 +150,7 @@ export default function AccountSettings({ user, onUserChanged, onLogout }) {
       {/* 2-Column Balanced Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {/* Left Column: Security & Password Change */}
+        {/* Left Column: Security & Password Policy */}
         <section className="panel space-y-5">
           <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
             <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100">
@@ -158,126 +158,145 @@ export default function AccountSettings({ user, onUserChanged, onLogout }) {
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900 leading-normal overflow-visible">
-                {lang === 'kh' ? 'ផ្លាស់ប្តូរពាក្យសម្ងាត់ផ្ទាល់ខ្លួន' : 'Change Personal Password'}
+                {user?.role === 'admin'
+                  ? (lang === 'kh' ? 'ផ្លាស់ប្តូរពាក្យសម្ងាត់ Admin' : 'Change Administrator Password')
+                  : (lang === 'kh' ? 'គោលការណ៍សុវត្ថិភាពគណនី' : 'Account Security Policy')}
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed overflow-visible">
-                {lang === 'kh' 
-                  ? 'ធ្វើបច្ចុប្បន្នភាពពាក្យសម្ងាត់ដើម្បីការពារសុវត្ថិភាពគណនីរបស់អ្នក' 
-                  : 'Update your password to keep your account secure.'}
+                {user?.role === 'admin'
+                  ? (lang === 'kh' ? 'ធ្វើបច្ចុប្បន្នភាពពាក្យសម្ងាត់ដើម្បីការពារសុវត្ថិភាពគណនី Admin' : 'Update your administrator credentials.')
+                  : (lang === 'kh' ? 'ព័ត៌មានស្តីពីសិទ្ធិ និងការគ្រប់គ្រងគណនីបុគ្គលិក' : 'Information regarding employee account privileges.')}
               </p>
             </div>
           </div>
 
-          {/* Feedback Messages */}
-          {message && (
-            <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold flex items-center gap-2.5 shadow-2xs">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>{message}</span>
-            </div>
-          )}
-          {error && (
-            <div role="alert" className="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs font-bold flex items-center gap-2.5 shadow-2xs">
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmitPassword} className="space-y-4">
-            
-            {/* Current Password */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-700">
-                {lang === 'kh' ? 'ពាក្យសម្ងាត់បច្ចុប្បន្ន *' : 'Current Password *'}
-              </label>
-              <div className="relative">
-                <input
-                  name="current_password"
-                  type={showCurrent ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  required
-                  placeholder="••••••••••••"
-                  className="w-full pl-3.5 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-purple-500 transition-all shadow-2xs"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowCurrent(!showCurrent)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
-                  title={showCurrent ? 'Hide password' : 'Show password'}
-                >
-                  {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {/* New Password */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-700">
-                {lang === 'kh' ? 'ពាក្យសម្ងាត់ថ្មី *' : 'New Password *'}
-              </label>
-              <div className="relative">
-                <input
-                  name="new_password"
-                  type={showNew ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  required
-                  maxLength={128}
-                  placeholder="••••••••••••"
-                  className="w-full pl-3.5 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-purple-500 transition-all shadow-2xs"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowNew(!showNew)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
-                  title={showNew ? 'Hide password' : 'Show password'}
-                >
-                  {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Confirm New Password */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-700">
-                {lang === 'kh' ? 'បញ្ជាក់ពាក្យសម្ងាត់ថ្មី *' : 'Confirm New Password *'}
-              </label>
-              <div className="relative">
-                <input
-                  name="confirm_password"
-                  type={showConfirm ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  required
-                  maxLength={128}
-                  placeholder="••••••••••••"
-                  className="w-full pl-3.5 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-purple-500 transition-all shadow-2xs"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirm(!showConfirm)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
-                  title={showConfirm ? 'Hide password' : 'Show password'}
-                >
-                  {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-
-
-            <button
-              type="submit"
-              disabled={busy}
-              className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm shadow-purple-500/25 transition-all active:scale-95 cursor-pointer"
-            >
-              {busy ? (
-                <span>{lang === 'kh' ? 'កំពុងរក្សាទុក...' : 'Saving…'}</span>
-              ) : (
-                <>
-                  <KeyRound className="w-4 h-4" />
-                  <span>{lang === 'kh' ? 'រក្សាទុកពាក្យសម្ងាត់ថ្មី' : 'Update Password'}</span>
-                </>
+          {user?.role === 'admin' ? (
+            <>
+              {/* Feedback Messages */}
+              {message && (
+                <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold flex items-center gap-2.5 shadow-2xs">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{message}</span>
+                </div>
               )}
-            </button>
-          </form>
+              {error && (
+                <div role="alert" className="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs font-bold flex items-center gap-2.5 shadow-2xs">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSubmitPassword} className="space-y-4">
+                {/* Current Password */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-700">
+                    {lang === 'kh' ? 'ពាក្យសម្ងាត់បច្ចុប្បន្ន *' : 'Current Password *'}
+                  </label>
+                  <div className="relative">
+                    <input
+                      name="current_password"
+                      type={showCurrent ? 'text' : 'password'}
+                      autoComplete="current-password"
+                      required
+                      placeholder="••••••••••••"
+                      className="w-full pl-3.5 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-purple-500 transition-all shadow-2xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrent(!showCurrent)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
+                      title={showCurrent ? 'Hide password' : 'Show password'}
+                    >
+                      {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* New Password */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-700">
+                    {lang === 'kh' ? 'ពាក្យសម្ងាត់ថ្មី *' : 'New Password *'}
+                  </label>
+                  <div className="relative">
+                    <input
+                      name="new_password"
+                      type={showNew ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      required
+                      maxLength={128}
+                      placeholder="••••••••••••"
+                      className="w-full pl-3.5 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-purple-500 transition-all shadow-2xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNew(!showNew)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
+                      title={showNew ? 'Hide password' : 'Show password'}
+                    >
+                      {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Confirm New Password */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-700">
+                    {lang === 'kh' ? 'បញ្ជាក់ពាក្យសម្ងាត់ថ្មី *' : 'Confirm New Password *'}
+                  </label>
+                  <div className="relative">
+                    <input
+                      name="confirm_password"
+                      type={showConfirm ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      required
+                      maxLength={128}
+                      placeholder="••••••••••••"
+                      className="w-full pl-3.5 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-purple-500 transition-all shadow-2xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirm(!showConfirm)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
+                      title={showConfirm ? 'Hide password' : 'Show password'}
+                    >
+                      {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={busy}
+                  className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm shadow-purple-500/25 transition-all active:scale-95 cursor-pointer"
+                >
+                  {busy ? (
+                    <span>{lang === 'kh' ? 'កំពុងរក្សាទុក...' : 'Saving…'}</span>
+                  ) : (
+                    <>
+                      <KeyRound className="w-4 h-4" />
+                      <span>{lang === 'kh' ? 'រក្សាទុកពាក្យសម្ងាត់ថ្មី' : 'Update Password'}</span>
+                    </>
+                  )}
+                </button>
+              </form>
+            </>
+          ) : (
+            <div className="p-5 bg-slate-50 border border-slate-200/90 rounded-2xl space-y-3.5">
+              <div className="flex items-center gap-2.5 text-purple-700 font-bold text-xs">
+                <Shield className="w-4 h-4" />
+                <span>{lang === 'kh' ? 'គណនីគ្រប់គ្រងដោយ Admin' : 'Administer-Managed Account'}</span>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                {lang === 'kh'
+                  ? 'គណនីរបស់អ្នកត្រូវបានគ្រប់គ្រងដោយផ្ទាល់ពីអ្នកគ្រប់គ្រងប្រព័ន្ធ (Administrator) នៃក្រុមហ៊ុន។ បុគ្គលិកមិនមានសិទ្ធិកែប្រែ ឬផ្លាស់ប្តូរលេខសម្ងាត់ដោយខ្លួនឯងឡើយ។'
+                  : 'Your account credentials and access permissions are managed directly by the company administrator. Self-service password changes are restricted for your role.'}
+              </p>
+              <div className="pt-2 border-t border-slate-200/70 text-[11px] text-slate-500 flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-slate-400" />
+                <span>{lang === 'kh' ? 'បើត្រូវការជំនួយ ឬភ្លេចលេខសម្ងាត់ សូមទាក់ទង Admin' : 'Contact your administrator for password assistance.'}</span>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Right Column: System Preferences, Role Privileges & Language */}
