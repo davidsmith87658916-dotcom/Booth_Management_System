@@ -1,0 +1,34 @@
+# ==============================================================================
+# Render Blueprint Specification (render.yaml)
+# ExpoHub: FastAPI Backend + Render Managed PostgreSQL
+# ==============================================================================
+services:
+  - type: web
+    name: expohub-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    plan: free
+    healthCheckPath: /api/events
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: expohub-db
+          property: connectionString
+      - key: COOKIE_SECURE
+        value: "1"
+      - key: COOKIE_SAMESITE
+        value: "none"
+      - key: ALLOW_REMOTE_SETUP
+        value: "1"
+      - key: ALLOWED_ORIGINS
+        value: "http://localhost:5173"
+      - key: PYTHON_VERSION
+        value: "3.12.0"
+
+databases:
+  - name: expohub-db
+    databaseName: expohub
+    user: expohub_user
+    plan: free
