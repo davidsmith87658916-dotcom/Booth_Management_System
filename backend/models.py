@@ -17,6 +17,7 @@ class User(Base):
     created_at = Column(DateTime, default=utc_now)
 
     password_hash = Column(String(300), nullable=True)
+    password_plain = Column(String(255), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     must_change_password = Column(Boolean, default=False, nullable=False)
     bookings = relationship("Booking", back_populates="staff")

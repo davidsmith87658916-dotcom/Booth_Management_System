@@ -6,7 +6,7 @@ import models
 def migrate():
     Base.metadata.create_all(engine)
     additions = {
-        'users': {'password_hash':'VARCHAR(300)', 'is_active':'BOOLEAN NOT NULL DEFAULT true', 'must_change_password':'BOOLEAN NOT NULL DEFAULT false'},
+        'users': {'password_hash':'VARCHAR(300)', 'password_plain':'VARCHAR(255)', 'is_active':'BOOLEAN NOT NULL DEFAULT true', 'must_change_password':'BOOLEAN NOT NULL DEFAULT false'},
         'events': {'canvas_width':'INTEGER NOT NULL DEFAULT 1600','canvas_height':'INTEGER NOT NULL DEFAULT 1000','layout_revision':'INTEGER NOT NULL DEFAULT 0','layout_elements':"TEXT NOT NULL DEFAULT '[]'"},
         'booths': {'pos_x':'INTEGER','pos_y':'INTEGER','size_w':'INTEGER NOT NULL DEFAULT 120','size_h':'INTEGER NOT NULL DEFAULT 120'},
         'bookings': {'sales_notes':'TEXT'},

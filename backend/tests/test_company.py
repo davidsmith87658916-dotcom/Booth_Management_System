@@ -297,4 +297,54 @@ class CompanyWorkflowTests(unittest.TestCase):
         self.assertEqual(manager.post(f'/api/bookings/{booking2}/extend-hold', json={'hours': 48}).status_code, 200)
         self.assertEqual(manager.post(f'/api/bookings/{booking2}/confirm').status_code, 200)
 
+    def test_admin_password_reveal_and_user_deletion(self):
+        # 1. Admin creates a user with known password
+        test_pass = 'SecretPass@2026'
+        create_res = self.client.post('/api/users', json={'name':'Delete Me','email':'deleteme@test.local','password':test_pass,'role':'staff'})
+        self.assertEqual(create_res.status_code, 201)
+        created_user = create_res.json()
+        user_id = created_user['id']
+        
+        # Admin can view password_plain
+        self.assertEqual(created_user.get('password_plain'), test_pass)
+        
+        # When Admin fetches all users, password_plain is included
+        users_list = self.client.get('/api/users').json()
+        target_in_list = [u for u in users_list if u['id'] == user_id][0]
+        self.assertEqual(target_in_list.get('password_plain'), test_pass)
+        
+        # When staff logs in and gets /api/auth/me, password_plain is NOT exposed
+        staff = TestClient(app, client=('127.0.0.1', 51000), headers={'X-Requested-With': 'ExpoHub'})
+        self.assertEqual(staff.post('/api/auth/login', json={'email': 'deleteme@test.local', 'password': test_pass}).status_code, 200)
+        me = staff.get('/api/auth/me').json()
+        self.assertNotIn('password_plain', me)
+        
+        # Staff cannot delete any user (403)
+        self.assertEqual(staff.delete(f'/api/users/{user_id}').status_code, 403)
+        
+        # Admin cannot delete their own account (400)
+        admin_me = self.client.get('/api/auth/me').json()
+        self.assertEqual(self.client.delete(f'/api/users/{admin_me["id"]}').status_code, 400)
+        
+        # Admin resets password -> password_plain is updated
+        new_pass = 'ResetSecret@2026'
+        reset_res = self.client.post(f'/api/users/{user_id}/password', json={'password': new_pass})
+        self.assertEqual(reset_res.status_code, 200)
+        self.assertEqual(reset_res.json().get('password_plain'), new_pass)
+        
+        # Verify user can login with new pass
+        staff2 = TestClient(app, client=('127.0.0.1',51000), headers={'X-Requested-With':'ExpoHub'})
+        self.assertEqual(staff2.post('/api/auth/login', json={'email':'deleteme@test.local','password':new_pass}).status_code, 200)
+        
+        # Admin deletes the user
+        del_res = self.client.delete(f'/api/users/{user_id}')
+        self.assertEqual(del_res.status_code, 200)
+        
+        # User is deleted from user list
+        users_after = self.client.get('/api/users').json()
+        self.assertNotIn(user_id, [u['id'] for u in users_after])
+        
+        # User cannot login anymore
+        self.assertEqual(staff2.post('/api/auth/login', json={'email':'deleteme@test.local','password':new_pass}).status_code, 401)
+
 if __name__=='__main__':unittest.main()

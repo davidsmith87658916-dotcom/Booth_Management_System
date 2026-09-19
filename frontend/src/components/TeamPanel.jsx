@@ -9,7 +9,12 @@ import {
   Edit3, 
   KeyRound, 
   RotateCw,
-  UserCheck
+  UserCheck,
+  Eye,
+  EyeOff,
+  Copy,
+  Check,
+  Trash2
 } from 'lucide-react';
 import { api, write } from '../api';
 import ModalFrame from './ModalFrame';
@@ -23,6 +28,8 @@ export default function TeamPanel({ currentUser, triggerNewUser }) {
   const [modal, setModal] = useState(null);
   const [busy, setBusy] = useState(false);
   const [audit, setAudit] = useState([]);
+  const [revealedPasswords, setRevealedPasswords] = useState({});
+  const [copiedId, setCopiedId] = useState(null);
 
   const load = async () => {
     try {
@@ -70,6 +77,25 @@ export default function TeamPanel({ currentUser, triggerNewUser }) {
       setBusy(false);
     }
   }
+
+  const handleDeleteUser = async (targetUser) => {
+    const confirmMsg = lang === 'kh'
+      ? `តើអ្នកពិតជាចង់លុបគណនី "${cleanStaffName(targetUser.name)}" មែនទេ?`
+      : `Are you sure you want to delete user "${cleanStaffName(targetUser.name)}"?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      setBusy(true);
+      setError('');
+      await write(`/users/${targetUser.id}`, {}, 'DELETE');
+      setMessage(lang === 'kh' ? 'បានលុបគណនីដោយជោគជ័យ' : 'User deleted successfully.');
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const getModalTitle = (kind) => {
     if (kind === 'new') return lang === 'kh' ? 'បង្កើតគណនីបុគ្គលិកថ្មី' : t('createUserModalTitle', 'Create user');
@@ -242,6 +268,7 @@ export default function TeamPanel({ currentUser, triggerNewUser }) {
               <tr>
                 <th>{t('nameCol', 'Name')}</th>
                 <th>{t('emailCol', 'Email')}</th>
+                <th className="text-center">{lang === 'kh' ? 'ពាក្យសម្ងាត់' : 'Password'}</th>
                 <th className="text-center">{t('roleCol', 'Role')}</th>
                 <th className="text-center">{t('accessCol', 'Access')}</th>
                 <th className="text-center">{t('actionsCol', 'Actions')}</th>
@@ -274,6 +301,39 @@ export default function TeamPanel({ currentUser, triggerNewUser }) {
                       {u.email}
                     </td>
                     <td className="text-center">
+                      {u.password_plain ? (
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-xs font-mono">
+                          <span className="font-semibold text-slate-800 tracking-wider">
+                            {revealedPasswords[u.id] ? u.password_plain : '••••••••'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setRevealedPasswords(prev => ({ ...prev, [u.id]: !prev[u.id] }))}
+                            className="p-1 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer rounded"
+                            title={revealedPasswords[u.id] ? (lang === 'kh' ? 'លាក់ពាក្យសម្ងាត់' : 'Hide password') : (lang === 'kh' ? 'បង្ហាញពាក្យសម្ងាត់' : 'Show password')}
+                          >
+                            {revealedPasswords[u.id] ? <EyeOff size={13} /> : <Eye size={13} />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(u.password_plain);
+                              setCopiedId(u.id);
+                              setTimeout(() => setCopiedId(null), 1500);
+                            }}
+                            className="p-1 text-slate-400 hover:text-blue-600 transition-colors cursor-pointer rounded"
+                            title={lang === 'kh' ? 'ចម្លងពាក្យសម្ងាត់' : 'Copy password'}
+                          >
+                            {copiedId === u.id ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-slate-400 italic">
+                          {lang === 'kh' ? 'មិនទាន់មាន' : 'Not set'}
+                        </span>
+                      )}
+                    </td>
+                    <td className="text-center">
                       {getRoleBadge(u.role)}
                     </td>
                     <td className="text-center">
@@ -281,7 +341,7 @@ export default function TeamPanel({ currentUser, triggerNewUser }) {
                     </td>
                     <td className="text-center">
                       {!isMe ? (
-                        <div className="inline-flex items-center justify-center gap-2">
+                        <div className="inline-flex items-center justify-center gap-1.5">
                           <button
                             type="button"
                             onClick={() => setModal({ kind: 'edit', user: u })}
@@ -299,6 +359,16 @@ export default function TeamPanel({ currentUser, triggerNewUser }) {
                           >
                             <KeyRound className="w-3.5 h-3.5 text-amber-600" />
                             <span>{lang === 'kh' ? 'កំណត់កូដ' : 'Set Password'}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteUser(u)}
+                            disabled={busy}
+                            className="px-2 py-1 rounded-lg text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 shadow-2xs transition-all active:scale-95 flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                            title={lang === 'kh' ? 'លុបគណនី' : 'Delete user'}
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                            <span>{lang === 'kh' ? 'លុប' : 'Delete'}</span>
                           </button>
                         </div>
                       ) : (

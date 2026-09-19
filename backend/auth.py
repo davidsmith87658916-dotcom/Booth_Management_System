@@ -30,8 +30,20 @@ def verify_password(password, value):
     except (ValueError, AttributeError):
         return False
 
-def user_view(u):
-    return {'id':u.id,'name':u.name,'email':u.email,'role':u.role,'phone':u.phone,'is_active':u.is_active,'can_login':bool(u.password_hash),'must_change_password':u.must_change_password}
+def user_view(u, viewer=None):
+    res = {
+        'id': u.id,
+        'name': u.name,
+        'email': u.email,
+        'role': u.role,
+        'phone': u.phone,
+        'is_active': u.is_active,
+        'can_login': bool(u.password_hash),
+        'must_change_password': u.must_change_password
+    }
+    if viewer and getattr(viewer, 'role', None) == 'admin':
+        res['password_plain'] = getattr(u, 'password_plain', None)
+    return res
 
 def current_user(request: Request, db: Session = Depends(get_db)):
     raw = request.cookies.get(COOKIE, '')
@@ -194,14 +206,14 @@ def change_password(data: PasswordChange, response: Response, user=Depends(curre
 
 @router.get('/users')
 def users(user=Depends(require_admin), db: Session = Depends(get_db)):
-    return [user_view(u) for u in db.query(models.User).order_by(models.User.id).all()]
+    return [user_view(u, viewer=user) for u in db.query(models.User).order_by(models.User.id).all()]
 
 @router.post('/users',status_code=201)
 def create_user(data: AccountCreate, user=Depends(require_admin), db: Session = Depends(get_db)):
     if db.query(models.User).filter(func.lower(models.User.email) == data.email).first(): raise HTTPException(409,'Email already exists')
-    new=models.User(name=data.name,email=data.email,phone=data.phone,role=data.role,password_hash=hash_password(data.password),is_active=True,must_change_password=False)
+    new=models.User(name=data.name,email=data.email,phone=data.phone,role=data.role,password_hash=hash_password(data.password),password_plain=data.password,is_active=True,must_change_password=False)
     db.add(new); db.flush(); audit(db,user,'user.created',new.id); db.commit()
-    return user_view(new)
+    return user_view(new, viewer=user)
 
 @router.put('/users/{user_id}')
 def update_user(user_id:int,data:AccountUpdate,user=Depends(require_admin),db: Session=Depends(get_db)):
@@ -212,16 +224,35 @@ def update_user(user_id:int,data:AccountUpdate,user=Depends(require_admin),db: S
     if not target.name: raise HTTPException(422,'Name is required')
     if target.id != user.id:
         db.query(models.AuthSession).filter_by(user_id=target.id).delete()
-    audit(db,user,'user.updated',target.id); db.commit(); return user_view(target)
+    audit(db,user,'user.updated',target.id); db.commit(); return user_view(target, viewer=user)
 
 @router.post('/users/{user_id}/password')
 def reset_password(user_id:int,data:PasswordReset,user=Depends(require_admin),db:Session=Depends(get_db)):
     target=db.get(models.User,user_id)
     if not target: raise HTTPException(404,'User not found')
     if target.id == user.id: raise HTTPException(400,'Use Change password for your own account')
-    target.password_hash=hash_password(data.password); target.must_change_password=False
+    target.password_hash=hash_password(data.password); target.password_plain=data.password; target.must_change_password=False
     db.query(models.AuthSession).filter_by(user_id=target.id).delete()
-    audit(db,user,'user.password_reset',target.id); db.commit(); return {'message':'Password set successfully'}
+    audit(db,user,'user.password_reset',target.id); db.commit(); return {'message':'Password set successfully', 'password_plain': data.password}
+
+@router.delete('/users/{user_id}')
+def delete_user(user_id: int, user=Depends(require_admin), db: Session = Depends(get_db)):
+    target = db.get(models.User, user_id)
+    if not target: raise HTTPException(404, 'User not found')
+    if target.id == user.id: raise HTTPException(400, 'You cannot delete your own administrator account')
+    if target.role == 'admin':
+        active_admins = db.query(models.User).filter_by(role='admin', is_active=True).count()
+        if active_admins <= 1: raise HTTPException(400, 'Cannot delete the sole administrator account')
+    db.query(models.AuthSession).filter_by(user_id=target.id).delete()
+    db.query(models.Booking).filter_by(staff_id=target.id).update({'staff_id': None})
+    db.query(models.PaymentNote).filter_by(recorded_by=target.id).update({'recorded_by': None})
+    db.query(models.PaymentNote).filter_by(verified_by=target.id).update({'verified_by': None})
+    db.query(models.BoothHandover).filter_by(staff_id=target.id).update({'staff_id': None})
+    db.query(models.AuditLog).filter_by(user_id=target.id).update({'user_id': None})
+    audit(db, user, 'user.deleted', target.id)
+    db.delete(target)
+    db.commit()
+    return {'message': 'User deleted successfully', 'id': user_id}
 
 @router.get('/audit')
 def audit_history(user=Depends(require_admin),db:Session=Depends(get_db)):

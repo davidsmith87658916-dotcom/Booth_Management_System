@@ -440,7 +440,7 @@ export const translations = {
     printReceipt: 'Print Receipt',
     exportToExcel: 'Export to Excel',
     exportExhibitors: 'Export Exhibitors',
-    exportPayments: 'Export Payments',
+    exportPayments: 'Export Payments (Excel)',
     publicFloorPlan: 'Public Live Plan',
     copyPublicLink: 'Copy Public Link',
     holdExpired: 'Hold Expired',
@@ -523,7 +523,7 @@ export const translations = {
     add: 'បន្ថែម',
     exportBookings: 'ទាញយកការកក់ (Excel)',
     viewFloorPlan: 'មើលប្លង់សាល',
-    publicLiveLink: 'ប្លង់សាធារណៈ',
+    publicLiveLink: 'ប្លង់ Public',
 
     // Statuses
     status_all: 'ទាំងអស់',
@@ -887,8 +887,8 @@ export const translations = {
     printReceipt: 'ចេញបង្កាន់ដៃ',
     exportToExcel: 'នាំចេញជា Excel',
     exportExhibitors: 'នាំចេញបញ្ជីក្រុមហ៊ុន',
-    exportPayments: 'នាំចេញកំណត់ត្រាហិរញ្ញវត្ថុ',
-    publicFloorPlan: 'ប្លង់ពិព័រណ៍សាធារណៈ',
+    exportPayments: 'ទាញយកកំណត់ត្រាហិរញ្ញវត្ថុ (Excel)',
+    publicFloorPlan: 'ប្លង់ Public',
     copyPublicLink: 'ចម្លង Link សាធារណៈ',
     holdExpired: 'បានផុតកំណត់',
     extendHold24h: 'ពន្យារ +២៤ម៉ោង',

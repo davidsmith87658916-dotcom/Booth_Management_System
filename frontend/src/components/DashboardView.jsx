@@ -241,7 +241,7 @@ export default function DashboardView({
               className="px-3.5 py-2.5 bg-white/10 hover:bg-white/15 text-white border border-white/15 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer active:scale-95"
             >
               <ExternalLink className="w-4 h-4 text-blue-300" />
-              <span>{t('publicLiveLink', 'ប្លង់សាធារណៈ')}</span>
+              <span>{t('publicLiveLink', 'ប្លង់ Public')}</span>
             </button>
           </div>
         </div>

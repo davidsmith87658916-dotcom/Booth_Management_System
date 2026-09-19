@@ -14,6 +14,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { useLanguage } from '../i18n';
+import { exportBoothsInventoryToExcel } from '../utils/exportUtils';
 
 export default function AdminStudio({ 
   currentEvent, 
@@ -181,26 +182,7 @@ export default function AdminStudio({
   };
 
   const handleExportCSV = () => {
-    const headers = ['Booth Code', 'Category', 'Zone', 'Dimensions', 'Price (USD)', 'Status', 'Exhibitor', 'Contact Person', 'Phone'];
-    const rows = filteredBooths.map(b => [
-      `"${b.booth_code}"`,
-      `"${(lang === 'kh' && (b.category_name_kh || b.category?.name_kh)) ? (b.category_name_kh || b.category?.name_kh) : (b.category_name || b.category?.name || 'Standard')}"`,
-      `"${b.zone || ''}"`,
-      `"${b.dimensions || '3m x 3m'}"`,
-      b.price || 0,
-      `"${b.status || ''}"`,
-      `"${b.active_booking?.exhibitor_name || ''}"`,
-      `"${b.active_booking?.contact_person || ''}"`,
-      `"${b.active_booking?.phone || ''}"`
-    ]);
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', `booths_${currentEvent?.name?.replace(/\s+/g, '_') || 'expo'}_${Date.now()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    exportBoothsInventoryToExcel(filteredBooths, currentEvent?.name || 'Expo');
   };
 
   const resetFilters = () => {

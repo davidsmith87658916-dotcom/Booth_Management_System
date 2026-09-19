@@ -659,7 +659,7 @@ export default function FloorPlan({
             }`}
           >
             <Crown size={14} className={categoryFilter === 'vip' ? 'text-amber-300' : 'text-purple-600'} />
-            <span>{lang === 'kh' ? 'ស្តង់កោះ VIP' : 'VIP Island Suite'}</span>
+            <span>{lang === 'kh' ? 'ស្តង់ VIP ពិសេស' : 'VIP Island Suite'}</span>
             <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-purple-200/60 text-purple-900 font-bold">
               ${(2500).toLocaleString()} • {catCounts.vip}
             </span>
@@ -790,10 +790,10 @@ export default function FloorPlan({
                     type="button"
                     onClick={onOpenPublicModal}
                     className="inline-flex items-center gap-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/80 px-3 py-2 text-xs font-bold transition-all shadow-2xs active:scale-95 cursor-pointer"
-                    title={lang === 'kh' ? 'តំណភ្ជាប់ប្លង់សាធារណៈសម្រាប់ភ្ញៀវ' : 'Public Live Plan'}
+                    title={lang === 'kh' ? 'ប្លង់ Public' : 'Public Link'}
                   >
                     <Share2 size={14} />
-                    <span>{lang === 'kh' ? 'ប្លង់សាធារណៈ' : 'Public Link'}</span>
+                    <span>{lang === 'kh' ? 'ប្លង់ Public' : 'Public Link'}</span>
                   </button>
                 )}
 

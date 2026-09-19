@@ -144,7 +144,7 @@ def create_event(event_in: schemas.EventCreate, db: Session = Depends(get_db), u
         models.BoothCategory(
             event_id=new_event.id,
             name="VIP Island Suite",
-            name_kh="ស្តង់កោះ VIP ពិសេស",
+            name_kh="ស្តង់ VIP ពិសេស",
             color_code="#8B5CF6",
             base_price=3500.0,
             dimensions="6m x 6m (36m²)",
