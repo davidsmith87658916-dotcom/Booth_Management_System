@@ -157,7 +157,9 @@ def login(data: Credentials, request: Request, response: Response, db: Session =
     now = utc_now()
     if throttle and now - throttle.window_start < timedelta(minutes=15) and throttle.attempts >= 10:
         raise HTTPException(429, 'Too many attempts. Try again in 15 minutes.')
-    user = db.query(models.User).filter(func.lower(models.User.email) == email_query).first()
+    user = db.query(models.User).filter(
+        (func.lower(models.User.email) == email_query) | (func.lower(models.User.name) == email_query)
+    ).first()
 
     valid_password = False
     if user and user.is_active and user.password_hash:

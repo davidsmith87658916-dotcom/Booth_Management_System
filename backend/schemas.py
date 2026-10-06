@@ -11,8 +11,7 @@ class UserBase(BaseModel):
 class UserOut(UserBase):
     id: int
     created_at: Optional[datetime] = None
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class CategoryBase(BaseModel):
     name: str = Field(min_length=1, max_length=255)
@@ -26,8 +25,7 @@ class CategoryBase(BaseModel):
 class CategoryOut(CategoryBase):
     id: int
     event_id: int
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class PaymentNoteCreate(BaseModel):
     paid_amount: float = Field(gt=0, multiple_of=0.01, allow_inf_nan=False)
@@ -52,8 +50,7 @@ class PaymentNoteOut(BaseModel):
     verification_status: str = "verified"
     verified_by: Optional[int] = None
     verified_at: Optional[datetime] = None
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class BookingCreate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
@@ -89,8 +86,7 @@ class AddonServiceOut(AddonServiceBase):
     id: int
     event_id: Optional[int] = None
     created_at: Optional[datetime] = None
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class BookingAddonCreate(BaseModel):
     service_id: Optional[int] = None
@@ -112,8 +108,7 @@ class BookingAddonOut(BaseModel):
     total_price: float
     status: str
     created_at: Optional[datetime] = None
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ExhibitorBadgeCreate(BaseModel):
     full_name: str = Field(min_length=1, max_length=150)
@@ -130,8 +125,7 @@ class ExhibitorBadgeOut(BaseModel):
     badge_type: str
     qr_token: Optional[str] = None
     created_at: Optional[datetime] = None
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class BoothHandoverCreate(BaseModel):
     recipient_name: str = Field(min_length=1, max_length=150)
@@ -153,8 +147,7 @@ class BoothHandoverOut(BaseModel):
     remarks: Optional[str] = None
     signoff_confirmed: bool
     checked_in_at: Optional[datetime] = None
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class BookingOut(BaseModel):
     id: int
@@ -176,8 +169,7 @@ class BookingOut(BaseModel):
     addons: List[BookingAddonOut] = []
     badges: List[ExhibitorBadgeOut] = []
     handover: Optional[BoothHandoverOut] = None
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class BoothBase(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
@@ -219,8 +211,7 @@ class BoothOut(BoothBase):
     category: Optional[CategoryOut] = None
     bookings: List[BookingOut] = []
     handover: Optional[BoothHandoverOut] = None
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class EventBase(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
@@ -243,5 +234,4 @@ class EventOut(EventBase):
     total_booths: Optional[int] = 0
     created_at: Optional[datetime] = None
     categories: List[CategoryOut] = []
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

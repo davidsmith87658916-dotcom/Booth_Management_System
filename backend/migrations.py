@@ -23,6 +23,39 @@ def migrate():
                 if name not in present:
                     connection.execute(text(f'ALTER TABLE {table} ADD COLUMN {name} {declaration}'))
 
+        # Add indexes on foreign keys and frequently queried fields if not exists
+        indexes = [
+            ("ix_booth_categories_event_id", "booth_categories", "event_id"),
+            ("ix_booths_event_id", "booths", "event_id"),
+            ("ix_booths_category_id", "booths", "category_id"),
+            ("ix_booths_status", "booths", "status"),
+            ("ix_bookings_booth_id", "bookings", "booth_id"),
+            ("ix_bookings_event_id", "bookings", "event_id"),
+            ("ix_bookings_staff_id", "bookings", "staff_id"),
+            ("ix_bookings_booking_status", "bookings", "booking_status"),
+            ("ix_addon_services_event_id", "addon_services", "event_id"),
+            ("ix_addon_services_is_active", "addon_services", "is_active"),
+            ("ix_booking_addons_booking_id", "booking_addons", "booking_id"),
+            ("ix_booking_addons_service_id", "booking_addons", "service_id"),
+            ("ix_exhibitor_badges_booking_id", "exhibitor_badges", "booking_id"),
+            ("ix_booth_handovers_booking_id", "booth_handovers", "booking_id"),
+            ("ix_booth_handovers_staff_id", "booth_handovers", "staff_id"),
+            ("ix_payment_notes_booking_id", "payment_notes", "booking_id"),
+            ("ix_payment_notes_recorded_by", "payment_notes", "recorded_by"),
+            ("ix_payment_notes_verification_status", "payment_notes", "verification_status"),
+            ("ix_payment_notes_verified_by", "payment_notes", "verified_by"),
+            ("ix_auth_sessions_user_id", "auth_sessions", "user_id"),
+            ("ix_auth_sessions_expires_at", "auth_sessions", "expires_at"),
+            ("ix_audit_logs_user_id", "audit_logs", "user_id"),
+            ("ix_audit_logs_action", "audit_logs", "action"),
+            ("ix_audit_logs_created_at", "audit_logs", "created_at"),
+        ]
+        for idx_name, table, column in indexes:
+            try:
+                connection.execute(text(f'CREATE INDEX IF NOT EXISTS {idx_name} ON {table} ({column})'))
+            except Exception:
+                pass
+
         # Seed initial default Addon Services if none exist
         existing_addons = connection.execute(text("SELECT count(*) FROM addon_services")).scalar()
         if existing_addons == 0:

@@ -12,7 +12,7 @@ from auth import router as auth_router
 from layout import router as layout_router
 from migrations import migrate
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import func
 from decimal import Decimal
 from pathlib import Path
@@ -57,43 +57,69 @@ app.include_router(layout_router)
 @app.middleware("http")
 async def protect_mutations(request: Request, call_next):
     if request.url.path.startswith('/api/'):
-        if request.url.path.startswith('/api/public/'):
+        if request.url.path.startswith('/api/public/') or request.url.path == '/api/health':
             return await call_next(request)
         if request.method in ('POST','PUT','PATCH','DELETE') and request.headers.get('X-Requested-With') != 'ExpoHub':
             return JSONResponse(status_code=403,content={'detail':'A same-origin application request is required'})
         response=await call_next(request)
-        response.headers['Cache-Control']='no-store'
+        if request.method in ('POST','PUT','PATCH','DELETE'):
+            response.headers['Cache-Control']='no-store'
         response.headers['X-Content-Type-Options']='nosniff'
         return response
     return await call_next(request)
 
+@app.get("/api/health")
+def health_check():
+    """Lightweight public healthcheck for Render / cloud monitoring."""
+    return {"status": "ok", "service": "ExpoHub API"}
+
 @app.get("/api/events")
 def get_events(db: Session = Depends(get_db), user=Depends(current_user)):
     events = db.query(models.Event).order_by(models.Event.id.asc()).all()
+    if not events:
+        return []
+
+    event_ids = [ev.id for ev in events]
+
+    # Batch compute booth status counts per event in a single fast grouped query
+    booth_counts_raw = db.query(
+        models.Booth.event_id,
+        models.Booth.status,
+        func.count(models.Booth.id)
+    ).filter(models.Booth.event_id.in_(event_ids))\
+     .group_by(models.Booth.event_id, models.Booth.status).all()
+
+    counts_map = {e_id: {"total": 0, "sold": 0, "hold": 0, "available": 0} for e_id in event_ids}
+    for e_id, status_val, count_val in booth_counts_raw:
+        if e_id in counts_map:
+            counts_map[e_id]["total"] += count_val
+            if status_val in counts_map[e_id]:
+                counts_map[e_id][status_val] += count_val
+
+    # Batch compute collected revenue per event in a single grouped query
+    collected_raw = db.query(
+        models.Booking.event_id,
+        func.sum(models.PaymentNote.paid_amount)
+    ).join(
+        models.PaymentNote, models.PaymentNote.booking_id == models.Booking.id
+    ).filter(
+        models.Booking.event_id.in_(event_ids),
+        models.PaymentNote.verification_status != "rejected",
+        models.Booking.booking_status != "cancelled"
+    ).group_by(models.Booking.event_id).all()
+
+    revenue_map = {e_id: 0.0 for e_id in event_ids}
+    for e_id, rev in collected_raw:
+        revenue_map[e_id] = float(rev or 0.0)
+
     results = []
     for ev in events:
-        total_booths = db.query(models.Booth).filter(models.Booth.event_id == ev.id).count()
-        sold_booths = db.query(models.Booth).filter(
-            models.Booth.event_id == ev.id,
-            models.Booth.status == "sold"
-        ).count()
-        hold_booths = db.query(models.Booth).filter(
-            models.Booth.event_id == ev.id,
-            models.Booth.status == "hold"
-        ).count()
-        available_booths = db.query(models.Booth).filter(
-            models.Booth.event_id == ev.id,
-            models.Booth.status == "available"
-        ).count()
-
-        # Calculate total revenue collected (exclude rejected notes and cancelled bookings)
-        collected = db.query(func.sum(models.PaymentNote.paid_amount)).join(
-            models.Booking, models.PaymentNote.booking_id == models.Booking.id
-        ).filter(
-            models.Booking.event_id == ev.id,
-            models.PaymentNote.verification_status != "rejected",
-            models.Booking.booking_status != "cancelled"
-        ).scalar() or 0.0
+        c = counts_map.get(ev.id, {"total": 0, "sold": 0, "hold": 0, "available": 0})
+        total_booths = c["total"]
+        sold_booths = c["sold"]
+        hold_booths = c["hold"]
+        available_booths = c["available"]
+        collected = revenue_map.get(ev.id, 0.0)
 
         results.append({
             "id": ev.id,
@@ -214,11 +240,15 @@ def get_event_booths(event_id: int, db: Session = Depends(get_db), user=Depends(
     booths = db.query(models.Booth).options(
         joinedload(models.Booth.category),
         joinedload(models.Booth.handover).joinedload(models.BoothHandover.staff),
-        joinedload(models.Booth.bookings).joinedload(models.Booking.staff),
-        joinedload(models.Booth.bookings).joinedload(models.Booking.addons),
-        joinedload(models.Booth.bookings).joinedload(models.Booking.badges),
-        joinedload(models.Booth.bookings).joinedload(models.Booking.payment_notes).joinedload(models.PaymentNote.recorder),
-        joinedload(models.Booth.bookings).joinedload(models.Booking.payment_notes).joinedload(models.PaymentNote.verifier)
+        selectinload(models.Booth.bookings).options(
+            joinedload(models.Booking.staff),
+            selectinload(models.Booking.addons),
+            selectinload(models.Booking.badges),
+            selectinload(models.Booking.payment_notes).options(
+                joinedload(models.PaymentNote.recorder),
+                joinedload(models.PaymentNote.verifier)
+            )
+        )
     ).filter(models.Booth.event_id == event_id).all()
 
     response = []
@@ -658,6 +688,9 @@ def extend_hold(booking_id: int, payload: ExtendHoldPayload, db: Session = Depen
     own_booking(user, booking)
     if booking.booking_status != "hold":
         raise HTTPException(400, "Only active holds can be extended")
+    booth = db.get(models.Booth, booking.booth_id)
+    if not booth or booth.status != "hold":
+        raise HTTPException(400, "Booth is not currently on hold")
     
     current_expiry = utc_now()
     if booking.hold_expires_at:
@@ -680,7 +713,7 @@ def get_public_floorplan(event_id: int, db: Session = Depends(get_db)):
         raise HTTPException(404, "Event not found")
     booths = db.query(models.Booth).options(
         joinedload(models.Booth.category),
-        joinedload(models.Booth.bookings)
+        selectinload(models.Booth.bookings)
     ).filter(models.Booth.event_id == event_id).all()
     
     booth_list = []
@@ -760,12 +793,13 @@ def get_analytics(event_id: int, db: Session = Depends(get_db), user=Depends(cur
     
     contracted_revenue = sum(bk.total_agreed_price for bk in bookings)
     
-    # Actual cash collected recorded in valid payment notes
+    # Actual cash collected recorded in valid payment notes (excluding cancelled bookings)
     payment_notes = db.query(models.PaymentNote).join(
         models.Booking, models.PaymentNote.booking_id == models.Booking.id
     ).filter(
         models.Booking.event_id == event_id,
-        models.PaymentNote.verification_status != "rejected"
+        models.PaymentNote.verification_status != "rejected",
+        models.Booking.booking_status != "cancelled"
     ).all()
 
     cash_collected = sum(pn.paid_amount for pn in payment_notes)

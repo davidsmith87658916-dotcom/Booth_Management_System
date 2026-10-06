@@ -48,7 +48,7 @@ class BoothCategory(Base):
     __tablename__ = "booth_categories"
 
     id = Column(Integer, primary_key=True, index=True)
-    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"))
+    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), index=True)
     name = Column(String(100), nullable=False)
     name_kh = Column(String(100), nullable=True)
     color_code = Column(String(50), default="#6366f1")
@@ -64,15 +64,15 @@ class Booth(Base):
     __tablename__ = "booths"
 
     id = Column(Integer, primary_key=True, index=True)
-    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"))
-    category_id = Column(Integer, ForeignKey("booth_categories.id", ondelete="SET NULL"), nullable=True)
+    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), index=True)
+    category_id = Column(Integer, ForeignKey("booth_categories.id", ondelete="SET NULL"), nullable=True, index=True)
     booth_code = Column(String(50), nullable=False, index=True)
     zone = Column(String(50), default="Hall A")
     row_pos = Column(Integer, default=1)
     col_pos = Column(Integer, default=1)
     width_units = Column(Integer, default=1)  # 1 grid unit or 2
     height_units = Column(Integer, default=1)
-    status = Column(String(50), default="available")  # available, hold, sold, blocked
+    status = Column(String(50), default="available", index=True)  # available, hold, sold, blocked
     price = Column(Float, nullable=False, default=1200.0)
     has_3d_view = Column(Boolean, default=True)
     model_3d_url = Column(String(500), nullable=True)
@@ -92,9 +92,9 @@ class Booking(Base):
     __tablename__ = "bookings"
 
     id = Column(Integer, primary_key=True, index=True)
-    booth_id = Column(Integer, ForeignKey("booths.id", ondelete="CASCADE"))
-    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"))
-    staff_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    booth_id = Column(Integer, ForeignKey("booths.id", ondelete="CASCADE"), index=True)
+    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), index=True)
+    staff_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     
     exhibitor_name = Column(String(255), nullable=False)
     contact_person = Column(String(255), nullable=False)
@@ -104,7 +104,7 @@ class Booking(Base):
     business_type = Column(String(150), nullable=True)
     fascia_name = Column(String(255), nullable=True)
     
-    booking_status = Column(String(50), default="hold")  # hold, deposit_paid, fully_paid, cancelled
+    booking_status = Column(String(50), default="hold", index=True)  # hold, deposit_paid, fully_paid, cancelled
     hold_expires_at = Column(String(100), nullable=True)
     total_agreed_price = Column(Float, nullable=False)
     created_at = Column(DateTime, default=utc_now)
@@ -121,22 +121,22 @@ class AddonService(Base):
     __tablename__ = "addon_services"
 
     id = Column(Integer, primary_key=True, index=True)
-    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=True)
+    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=True, index=True)
     name = Column(String(150), nullable=False)
     name_kh = Column(String(150), nullable=True)
     category = Column(String(50), default="furniture")  # electrical, furniture, av, utilities, branding
     unit_price = Column(Float, nullable=False, default=10.0)
     unit_name = Column(String(50), default="unit")  # unit, pc, set, day
     icon = Column(String(50), default="Package")
-    is_active = Column(Boolean, default=True, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False, index=True)
     created_at = Column(DateTime, default=utc_now)
 
 class BookingAddon(Base):
     __tablename__ = "booking_addons"
 
     id = Column(Integer, primary_key=True, index=True)
-    booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="CASCADE"), nullable=False)
-    service_id = Column(Integer, ForeignKey("addon_services.id", ondelete="SET NULL"), nullable=True)
+    booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="CASCADE"), nullable=False, index=True)
+    service_id = Column(Integer, ForeignKey("addon_services.id", ondelete="SET NULL"), nullable=True, index=True)
     name = Column(String(150), nullable=False)
     name_kh = Column(String(150), nullable=True)
     category = Column(String(50), default="furniture")
@@ -152,7 +152,7 @@ class ExhibitorBadge(Base):
     __tablename__ = "exhibitor_badges"
 
     id = Column(Integer, primary_key=True, index=True)
-    booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="CASCADE"), nullable=False)
+    booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="CASCADE"), nullable=False, index=True)
     full_name = Column(String(150), nullable=False)
     position = Column(String(100), nullable=True)
     phone = Column(String(50), nullable=True)
@@ -167,8 +167,8 @@ class BoothHandover(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     booth_id = Column(Integer, ForeignKey("booths.id", ondelete="CASCADE"), nullable=False, unique=True)
-    booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="CASCADE"), nullable=True)
-    staff_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="CASCADE"), nullable=True, index=True)
+    staff_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     
     recipient_name = Column(String(150), nullable=False)
     recipient_phone = Column(String(50), nullable=True)
@@ -186,8 +186,8 @@ class PaymentNote(Base):
     __tablename__ = "payment_notes"
 
     id = Column(Integer, primary_key=True, index=True)
-    booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="CASCADE"))
-    recorded_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="CASCADE"), index=True)
+    recorded_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     
     paid_amount = Column(Float, default=0.0)
     remaining_balance = Column(Float, default=0.0)
@@ -195,8 +195,8 @@ class PaymentNote(Base):
     reference_slip_no = Column(String(150), nullable=True)
     note_text = Column(Text, nullable=True)
     payment_date = Column(DateTime, default=utc_now)
-    verification_status = Column(String(50), default="verified", nullable=False)  # verified, pending, rejected
-    verified_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    verification_status = Column(String(50), default="verified", nullable=False, index=True)  # verified, pending, rejected
+    verified_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     verified_at = Column(DateTime, nullable=True)
 
     booking = relationship("Booking", back_populates="payment_notes")
@@ -206,16 +206,16 @@ class PaymentNote(Base):
 class AuthSession(Base):
     __tablename__ = "auth_sessions"
     token_hash = Column(String(64), primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    expires_at = Column(DateTime, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False, index=True)
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    action = Column(String(100), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    action = Column(String(100), nullable=False, index=True)
     target = Column(String(150), nullable=False)
-    created_at = Column(DateTime, default=utc_now)
+    created_at = Column(DateTime, default=utc_now, index=True)
 
 class LoginThrottle(Base):
     __tablename__ = "login_throttles"

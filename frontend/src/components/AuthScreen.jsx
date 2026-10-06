@@ -121,10 +121,10 @@ export default function AuthScreen({ setup, onSignedIn }) {
             <User className="w-5 h-5 text-slate-400 absolute left-4 pointer-events-none" />
             <input
               name="email"
-              type="email"
+              type="text"
               autoComplete="username"
               required
-              placeholder={lang === 'kh' ? 'អ៊ីមែលគណនី (Gmail ឬ Email)' : 'Email address (Gmail or Email)'}
+              placeholder={lang === 'kh' ? 'អ៊ីមែល ឬ ឈ្មោះគណនី (Email or Username)' : 'Email or Username'}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full h-14 pl-12 pr-4 rounded-2xl bg-[#E6EBF5] neu-input text-sm font-medium text-slate-800 placeholder:text-slate-400"

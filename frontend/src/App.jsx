@@ -79,13 +79,105 @@ function Workspace({user,onUserChanged,onLogout}){
  const fetchEvents=useCallback(async()=>{const result=await api('/events');setEvents(result);setEventId(id=>result.some(e=>e.id===id)?id:(result.find(e=>e.status==='active')||result[0])?.id||null);return result;},[]);
  useEffect(()=>{fetchEvents().catch(e=>setError(e.message)).finally(()=>setLoading(false));},[fetchEvents]);
  useEffect(()=>{document.body.dataset.theme='royal';localStorage.setItem('expohub-theme','royal');},[]);
- const refresh=useCallback(async(id)=>{const [booths,categories,analytics,layout]=await Promise.all([api(`/events/${id}/booths`),api(`/events/${id}/categories`),api(`/analytics/${id}`),api(`/events/${id}/layout`)]);return {booths,categories,analytics,layout};},[]);
- useEffect(()=>{
-   if(!eventId)return;let stopped=false,timer;
-   const update=async()=>{const version=++requestVersion.current;try{const result=await refresh(eventId);if(!stopped&&version===requestVersion.current){setData(result);setSyncError('');}}catch(err){if(!stopped)setSyncError(err.message);}finally{if(!stopped){setLoading(false);timer=setTimeout(update,3000);}}};
-   update();return()=>{stopped=true;clearTimeout(timer);};
- },[eventId,refresh]);
- const reload=async()=>{const version=++requestVersion.current;if(eventId){const result=await refresh(eventId);if(version===requestVersion.current){setData(result);setSyncError('');}}await fetchEvents();};
+ const fetchStaticMeta = useCallback(async (id) => {
+   const [categories, layout] = await Promise.all([
+     api(`/events/${id}/categories`),
+     api(`/events/${id}/layout`)
+   ]);
+   return { categories, layout };
+ }, []);
+
+ const fetchDynamicData = useCallback(async (id) => {
+   const [booths, analytics] = await Promise.all([
+     api(`/events/${id}/booths`),
+     api(`/analytics/${id}`)
+   ]);
+   return { booths, analytics };
+ }, []);
+
+ const refreshAll = useCallback(async (id) => {
+   const [dyn, stat] = await Promise.all([
+     fetchDynamicData(id),
+     fetchStaticMeta(id)
+   ]);
+   return { ...dyn, ...stat };
+ }, [fetchDynamicData, fetchStaticMeta]);
+
+ useEffect(() => {
+   if (!eventId) return;
+   let stopped = false;
+   let timer;
+
+   // Initial full fetch when switching event
+   const initEvent = async () => {
+     const version = ++requestVersion.current;
+     try {
+       const result = await refreshAll(eventId);
+       if (!stopped && version === requestVersion.current) {
+         setData(result);
+         setSyncError('');
+       }
+     } catch (err) {
+       if (!stopped) setSyncError(err.message);
+     } finally {
+       if (!stopped) setLoading(false);
+     }
+   };
+   initEvent();
+
+   // Periodic smart polling for dynamic state (booths, analytics)
+   const pollDynamic = async () => {
+     if (document.hidden) {
+       timer = setTimeout(pollDynamic, 5000);
+       return;
+     }
+     const version = ++requestVersion.current;
+     try {
+       const dyn = await fetchDynamicData(eventId);
+       if (!stopped && version === requestVersion.current) {
+         setData(prev => ({ ...prev, ...dyn }));
+         setSyncError('');
+       }
+     } catch (err) {
+       if (!stopped) setSyncError(err.message);
+     } finally {
+       if (!stopped) {
+         timer = setTimeout(pollDynamic, 12000);
+       }
+     }
+   };
+
+   timer = setTimeout(pollDynamic, 12000);
+
+   // Sync immediately when user switches back to this tab
+   const handleResume = () => {
+     if (!document.hidden && !stopped) {
+       clearTimeout(timer);
+       pollDynamic();
+     }
+   };
+   document.addEventListener('visibilitychange', handleResume);
+   window.addEventListener('focus', handleResume);
+
+   return () => {
+     stopped = true;
+     clearTimeout(timer);
+     document.removeEventListener('visibilitychange', handleResume);
+     window.removeEventListener('focus', handleResume);
+   };
+ }, [eventId, refreshAll, fetchDynamicData]);
+
+ const reload = async () => {
+   const version = ++requestVersion.current;
+   if (eventId) {
+     const result = await refreshAll(eventId);
+     if (version === requestVersion.current) {
+       setData(result);
+       setSyncError('');
+     }
+   }
+   await fetchEvents();
+ };
  const mutate=async(path,payload,method='POST')=>{const result=await write(path,payload,method);try{await reload();}catch(err){setSyncError('Saved, but refresh failed: '+err.message);}return result;};
  const safeMutation=async(path,payload,method)=>{try{await mutate(path,payload,method);return true;}catch(err){alert(err.message);return false;}};
  const handleVerifyPayment=async(noteId)=>safeMutation(`/payment-notes/${noteId}/verify`,{});
